@@ -85,12 +85,11 @@ class DockerMonitoring(Monitoring):
         self.delay = 0
         self.nb_containers = 0
         containers = self.env_client.containers.list()
-        data = {'date': datetime.datetime.now(pytz.timezone('America/Montreal')), 'nb_containers': 0}
+        data = {'date': datetime.datetime.now().strftime('%M:%S.%f')[:-4], 'nb_containers': 0}
         for cont in containers:
             for targ in targetList:
 
                 if targ in str(cont.labels.get('com.docker.compose.service')):
-                    print(cont.name.replace(".", "_"))
                     self.nb_containers += 1
                     try:
                         container_stats = cont.stats(decode=False, stream=False)
