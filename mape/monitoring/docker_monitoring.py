@@ -9,6 +9,7 @@ import pytz
 from dotenv import load_dotenv
 from signal import signal, SIGINT
 from sys import exit
+
 from monitoring import Monitoring
 
 load_dotenv()
@@ -78,7 +79,7 @@ class DockerMonitoring(Monitoring):
 
         return {'rx': self.rx_bytes, 'tx': self.tx_bytes}
 
-    def get_measurements(self):
+    def get_measurements(self,targetList):
         t1 = time.time()
         print("Monitoring V2\nUsing: Docker remote API")
         self.delay = 0
@@ -86,24 +87,27 @@ class DockerMonitoring(Monitoring):
         containers = self.env_client.containers.list()
         data = {'date': datetime.datetime.now(pytz.timezone('America/Montreal')), 'nb_containers': 0}
         for cont in containers:
-            if "web" in str(cont.labels.get('com.docker.compose.service')):
-                self.nb_containers += 1
-                try:
-                    container_stats = cont.stats(decode=False, stream=False)
-                    name = cont.name.replace(".", "_")
-                    data[name] = {'short_id': cont.short_id,
-                                  'cpu_percent': float(self.get_cpu_percent(container_stats)),
-                                  'cpu_power': float(self.mongodb_client.powerapi.formula.find_one({"target":cont.name}, sort=[('_id', pymongo.DESCENDING)]).get("power")),
-                                  'memory': float(self.get_memory(container_stats)['memory']),
-                                  'memory_limit': float(self.get_memory(container_stats)['memory_limit']),
-                                  'memory_percent': float(self.get_memory(container_stats)['memory_percent']),
-                                  'disk_i': float(self.get_disk_io(container_stats)['disk_i']),
-                                  'disk_o': float(self.get_disk_io(container_stats)['disk_o']),
-                                  'net_rx': float(self.get_network_throughput(container_stats)['rx']),
-                                  'net_tx': float(self.get_network_throughput(container_stats)['tx'])}
-                except:
-                    print("fail")
-                    pass
+            for targ in targetList:
+
+                if targ in str(cont.labels.get('com.docker.compose.service')):
+                    print(cont.name.replace(".", "_"))
+                    self.nb_containers += 1
+                    try:
+                        container_stats = cont.stats(decode=False, stream=False)
+                        name = cont.name.replace(".", "_")
+                        data[name] = {'short_id': cont.short_id,
+                                      'cpu_percent': float(self.get_cpu_percent(container_stats)),
+                                      #'cpu_power': float(self.mongodb_client.powerapi.formula.find_one({"target":cont.name}, sort=[('_id', pymongo.DESCENDING)]).get("power")),
+                                      #'memory': float(self.get_memory(container_stats)['memory']),
+                                      #'memory_limit': float(self.get_memory(container_stats)['memory_limit']),
+                                      'memory_percent': float(self.get_memory(container_stats)['memory_percent']),
+                                      'disk_i': float(self.get_disk_io(container_stats)['disk_i']),
+                                      'disk_o': float(self.get_disk_io(container_stats)['disk_o']),
+                                      'net_rx': float(self.get_network_throughput(container_stats)['rx']),
+                                      'net_tx': float(self.get_network_throughput(container_stats)['tx'])}
+                    except Exception as e:
+                        print(e)
+                        pass
 
         data['nb_containers'] = self.nb_containers
         super().database_insertion(data, "containers")
@@ -120,8 +124,22 @@ def handler(signal_received, frame):
 def main():
     signal(SIGINT, handler)
     monitoring = DockerMonitoring(pymongo.MongoClient(os.getenv("URI")), docker.from_env())
+    target = os.getenv("TARGET")
+    print(target)
+    if target == "sawtooth":
+        targetList=["validator"]
+    elif target == "fabric":
+        targetList = ["peer", "order"]
+    elif target == "ethereum":
+        targetList = ["miner"]
+    else:
+        print("target must be sawtooth, fabric or ethereum")
+        exit(0)
+        
+
+
     while True:
-        monitoring.get_measurements()
+        monitoring.get_measurements(targetList)
         time.sleep(1)
 
 
