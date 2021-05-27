@@ -4,10 +4,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.idea
 # C extensions
 *.so
-
+db/mongodb
 # Distribution / packaging
 .Python
 build/
@@ -133,6 +133,7 @@ Supprimerait src/ease/mape/monitoring/__pycache__/
 .idea
 !/test/
 !/id_rsa
+
 
 Supprimerait db/mongodb/diagnostic.data/metrics.2019-10-18T14-45-19Z-00000
 Supprimerait db/mongodb/diagnostic.data/metrics.2019-10-21T17-27-32Z-00000
