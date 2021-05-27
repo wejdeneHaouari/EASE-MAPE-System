@@ -2,7 +2,7 @@ import datetime
 import os
 import sys
 import time
-
+from datetime import datetime, timedelta
 import docker
 import pymongo
 import pytz
@@ -85,7 +85,9 @@ class DockerMonitoring(Monitoring):
         self.delay = 0
         self.nb_containers = 0
         containers = self.env_client.containers.list()
-        data = {'date': datetime.datetime.now().strftime('%M:%S.%f')[:-4], 'nb_containers': 0}
+        date = datetime.now()
+        print('{:%H:%M:%S}'.format(date))
+        data = {'date':'{:%H:%M:%S}'.format(date), 'nb_containers': 0}
         for cont in containers:
             for targ in targetList:
 
